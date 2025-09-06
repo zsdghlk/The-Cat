@@ -31,10 +31,10 @@ jobs:
         run: node post-cat.js
         env:
           # Secrets（Settings → Secrets and variables → Actions）
-          CAT_API_KEY: ${{ secrets.CAT_API_KEY }}
-          TWITTER_APP_KEY: ${{ secrets.TWITTER_APP_KEY }}
-          TWITTER_APP_SECRET: ${{ secrets.TWITTER_APP_SECRET }}
-          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+          CAT_API_KEY: ${{ secrets.live_2Db1IQ9XcoS7iClgzp9JkxZxv9K82pA4S4LU9tI595LnniEy5RpGDCDCjRrRP64r }}
+          TWITTER_APP_KEY: ${{ secrets.D4tCtvDdD1oCKx5Cm1gd4hOKI }}
+          TWITTER_APP_SECRET: ${{ secrets.nbER1eAifbUYK9SCbwXx6TtyhxqlrR7GwPMK94UrgudLzpxlgP }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.1964304988420911104-3IAcoOZ40JPj316YeYlsLzgVqabxkU }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.jZf0779uTsLMX62wYwKvpS2MHfVqr1Xw848AKRpf2iWB6 }}
           # 手動実行時だけ DRY_RUN を切り替え（スケジュール実行時は未設定＝false）
           DRY_RUN: ${{ inputs.dry_run }}
