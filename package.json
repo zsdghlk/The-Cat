@@ -1,0 +1,10 @@
+{
+  "name": "the-cat",
+  "version": "1.0.0",
+  "main": "post-cat.js",
+  "type": "module",
+  "dependencies": {
+    "@thatapicompany/thecatapi": "^1.0.0",
+    "twitter-api-v2": "^1.15.0"
+  }
+}
