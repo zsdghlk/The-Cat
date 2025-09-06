@@ -27,7 +27,18 @@ jobs:
           node-version: 20
       - run: npm ci || npm i
 
-            - name: Post a cat image to X
+      # Secretsが揃っているか先に検査（未設定ならここで失敗させる）
+      - name: Preflight (check secrets)
+        run: |
+          node -e "['CAT_API_KEY','TWITTER_APP_KEY','TWITTER_APP_SECRET','TWITTER_ACCESS_TOKEN','TWITTER_ACCESS_SECRET'].forEach(k=>{if(!process.env[k]){throw new Error('Missing '+k)}})"
+        env:
+          CAT_API_KEY: ${{ secrets.CAT_API_KEY }}
+          TWITTER_APP_KEY: ${{ secrets.TWITTER_APP_KEY }}
+          TWITTER_APP_SECRET: ${{ secrets.TWITTER_APP_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+
+      - name: Run poster
         run: node post-cat.js
         env:
           CAT_API_KEY: ${{ secrets.CAT_API_KEY }}
@@ -35,5 +46,5 @@ jobs:
           TWITTER_APP_SECRET: ${{ secrets.TWITTER_APP_SECRET }}
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
-          DRY_RUN: ${{ inputs.dry_run }}
-
+          # dispatchのときは入力、それ以外（schedule）はfalse
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
