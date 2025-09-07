@@ -2,7 +2,7 @@ name: Post Cat to X (Every 15 min)
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/20 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:
