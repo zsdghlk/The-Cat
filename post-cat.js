@@ -1,6 +1,6 @@
-// post-cat.js
-// TheCatAPI の画像を取得して X（Twitter）に投稿。言い回しを巧みに多様化＋重複防止。
-// 依存: @thatapicompany/thecatapi, twitter-api-v2  / Node.js >= 20
+// post-cat.js (short caption edition)
+// TheCatAPI の画像を X に投稿。短文キャプション＋重複防止。
+// 依存: @thatapicompany/thecatapi, twitter-api-v2 / Node.js >= 20
 
 import { TheCatAPI } from "@thatapicompany/thecatapi";
 import { TwitterApi, EUploadMimeType } from "twitter-api-v2";
@@ -13,84 +13,39 @@ const {
   TWITTER_ACCESS_TOKEN,
   TWITTER_ACCESS_SECRET,
   DRY_RUN,
-  CAT_API_HOST, // 例: "https://api.thedogapi.com/v1"（任意）
+  CAT_API_HOST,          // 例: "https://api.thedogapi.com/v1"（任意）
+  CAPTION_TAGS = "#TheCatAPI", // 空文字にすればハッシュタグ無しにもできる
 } = process.env;
 
-// ---------- 小道具 ----------
+// ---------- utils ----------
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const choice = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const isTrue = (v) => String(v).toLowerCase() === "true";
 
-// ---------- 語彙（言い回しの材料） ----------
-const OPENERS = [
-  "休憩のお供に、猫を一匙",
-  "気持ちを整える一枚",
-  "画面の隅に、やさしい気配",
-  "集中が切れる前に、猫の処方箋",
-  "本日の看板猫をお届け",
-  "世界がざわつく前に深呼吸",
-  "作業のBGMに合う猫、見つけました",
-  "午後を救うもふもふ速報",
-  "心拍数を下げに来た猫です",
-  "今日も小さな王さまは健在",
-  "猫が通ります。道をあけてください",
-  "かわいさでリロード"
-];
+// ---------- 短文用語彙 ----------
+const NOUN = ["猫", "ねこ", "にゃんこ"];
+const SCENE = ["窓辺", "日だまり", "机上", "ソファ", "床", "影", "朝", "昼", "夕方", "夜"];
+const VERB = ["待機", "充電", "休憩", "鎮座", "見守り", "ねむる", "のび", "ごろり"];
+const ADJ  = ["やわらか", "静か", "のんびり", "凛々", "ふわふわ", "まったり", "すやすや", "きゅるん"];
+const EMO  = ["😺","🐾","🐱","✨","💤"];
 
-const SCENES = [
-  "窓辺", "机の上", "ひざの上", "日だまり", "廊下の角", "ソファの端",
-  "涼しい床", "カーテンの影", "玄関マット", "夕暮れの光", "雨音のそば", "エアコンの風下"
-];
-
-const ADVERBS = [
-  "しれっと", "堂々と", "こっそり", "誇らしげに", "のびのびと", "気ままに",
-  "やわらかく", "静かに", "大胆に", "あくまで自然体で"
-];
-
-const VERBS = [
-  "見守る", "寝落ちする", "鎮座する", "のびる", "丸まる", "主張する",
-  "世界を征服する顔をする", "視線をよこす", "毛づくろいする", "あくびする"
-];
-
-const ONE_LINERS = [
-  "可愛いの暴力。", "平和はここにあった。", "今日は勝ち。", "尊みが深い。",
-  "作業効率、たぶん上がる。", "これは反則。", "語彙力が溶ける。", "秒で癒やす。"
-];
-
-const QAS = [
-  "問：可愛いは正義？ 答：はい。",
-  "問：猫は正義？ 答：つよい。",
-  "問：休憩の最適解？ 答：猫。"
-];
-
-const CLOSERS = [
-  "どうぞ受け取って。", "そっと置いておきます。", "深呼吸してからどうぞ。", "今日も良い日になる。"
-];
-
-const HASHTAG_SETS = [
-  ["#TheCatAPI", "#猫"], ["#TheCatAPI", "#ねこ"], ["#TheCatAPI", "#CatLovers"],
-  ["#TheCatAPI"], ["#TheCatAPI", "#cat"]
-];
-
-// ---------- テンプレ群（文構造を変える） ----------
+// ---------- 短文テンプレ（10〜15字前後を狙う） ----------
 const TEMPLATES = [
-  ({op, scene, adv, verb, one, tags}) =>
-    `${op} — ${scene}で${adv}${verb}。${one} ${tags}`,
-  ({scene, adv, verb, one, tags}) =>
-    `ふと${scene}、${adv}${verb}猫。${one} ${tags}`,
-  ({op, scene, adv, verb, closer, tags}) =>
-    `${op}。${scene}で${adv}${verb}。${closer} ${tags}`,
-  ({qa, scene, verb, tags}) =>
-    `${qa} ${scene}で${verb}猫の証拠写真。${tags}`,
-  ({op, one, tags}) =>
-    `${op}。${one} ${tags}`,
-  ({scene, adv, verb, closer, tags}) =>
-    `${scene}で${adv}${verb}。${closer} ${tags}`,
-  ({op, scene, one, tags}) =>
-    `${op} — ${scene}編。${one} ${tags}`,
+  ({n,a})         => `${a}${n}`,
+  ({n,s})         => `${s}の${n}`,
+  ({n,v})         => `${n}${v}`,
+  ({n})           => `本日の${n}`,
+  ({n})           => `${n}の時間`,
+  ({n})           => `${n}速報`,
+  ({n})           => `${n}通信`,
+  ({n})           => `${n}助かる`,
+  ({n})           => `${n}、います`,
+  ({n})           => `${n}、よし`,
+  ({n,s})         => `${s}で${n}`,
+  ({n,a})         => `${n}、${a}`,
 ];
 
-// ---------- 重複防止（過去に使った文章を記録） ----------
+// ---------- 重複防止（履歴保存） ----------
 const STATE_DIR = ".state";
 const USED_PATH = `${STATE_DIR}/used_captions.json`;
 
@@ -100,44 +55,44 @@ function loadUsed() {
 }
 function saveUsed(set) {
   fs.mkdirSync(STATE_DIR, { recursive: true });
-  const arr = Array.from(set).slice(-5000); // 直近5000件だけ保持
+  const arr = Array.from(set).slice(-5000); // 直近5000件
   fs.writeFileSync(USED_PATH, JSON.stringify(arr, null, 2));
 }
-const usedCaptions = loadUsed();
+const used = loadUsed();
 
-// 生成 → 未使用なら採用（最大40回まで試行）
-function generateCaptionUnique() {
-  for (let i = 0; i < 40; i++) {
-    const tags = choice(HASHTAG_SETS).join(" ");
+function generateShortCaptionUnique() {
+  for (let i = 0; i < 50; i++) {
+    const core = choice(TEMPLATES)({
+      n: choice(NOUN),
+      s: choice(SCENE),
+      v: choice(VERB),
+      a: choice(ADJ),
+    });
 
-    const payload = {
-      op: choice(OPENERS),
-      scene: choice(SCENES),
-      adv: choice(ADVERBS),
-      verb: choice(VERBS),
-      one: choice(ONE_LINERS),
-      qa: choice(QAS),
-      closer: choice(CLOSERS),
-      tags,
-    };
+    // 20%で絵文字を1つだけ付ける（付けすぎない）
+    const withEmoji = Math.random() < 0.2 ? `${core} ${choice(EMO)}` : core;
 
-    const caption = choice(TEMPLATES)(payload)
-      .replace(/\s+/g, " ")           // 余分な空白を整理
-      .replace(/。+/g, "。")           // 句点だぶり整理
-      .trim();
+    // タグは環境変数で切替可能（既定 #TheCatAPI）
+    const caption = CAPTION_TAGS
+      ? `${withEmoji} ${CAPTION_TAGS}`.trim()
+      : withEmoji.trim();
 
-    if (!usedCaptions.has(caption) && caption.length <= 260) {
-      usedCaptions.add(caption);
+    // 短めを維持
+    if (caption.length > 60) continue;
+
+    if (!used.has(caption)) {
+      used.add(caption);
       return caption;
     }
   }
-  // 最後の手段（必ずユニーク化）
-  const fallback = `${choice(OPENERS)}。${choice(ONE_LINERS)} ${choice(HASHTAG_SETS).join(" ")}`;
-  usedCaptions.add(fallback);
+
+  // 最後の保険：必ずユニークに
+  const fallback = `本日の猫 ${Date.now().toString().slice(-4)} ${CAPTION_TAGS}`.trim();
+  used.add(fallback);
   return fallback;
 }
 
-// ---------- MIME 推定 ----------
+// ---------- MIME ----------
 function pickMimeType(contentType) {
   const ct = (contentType || "").toLowerCase();
   if (ct.includes("png")) return EUploadMimeType.Png;
@@ -147,7 +102,7 @@ function pickMimeType(contentType) {
   return EUploadMimeType.Jpeg;
 }
 
-// ---------- 本体 ----------
+// ---------- main ----------
 for (const k of [
   "CAT_API_KEY","TWITTER_APP_KEY","TWITTER_APP_SECRET",
   "TWITTER_ACCESS_TOKEN","TWITTER_ACCESS_SECRET",
@@ -168,7 +123,7 @@ async function main() {
   const username = me?.data?.username || "unknown";
   console.log(`Auth OK: @${username}`);
 
-  // 画像取得（軽いリトライ付き）
+  // 画像取得（軽リトライ）
   let img;
   for (let i = 0; i < 3; i++) {
     try {
@@ -193,7 +148,7 @@ async function main() {
     return;
   }
 
-  // メディア→ALT→ツイート
+  // アップロード → ALT → 投稿
   const mediaId = await twitter.v1.uploadMedia(buf, { mimeType });
   try {
     await twitter.v1.createMediaMetadata(mediaId, {
@@ -201,21 +156,19 @@ async function main() {
     });
   } catch {}
 
-  const caption = generateCaptionUnique();
+  const caption = generateShortCaptionUnique();
   const tw = await twitter.v2.tweet({ text: caption, media: { media_ids: [mediaId] } });
 
   const tweetId = tw?.data?.id;
   if (!tweetId) throw new Error("Tweet succeeded but no id returned");
 
-  // 投稿URL＆状態出力
   console.log("📝 Caption:", caption);
   console.log("✅ Tweet ID:", tweetId);
-  const url = `https://x.com/${username}/status/${tweetId}`;
-  console.log("🔗 Tweet URL:", url);
+  console.log("🔗 Tweet URL:", `https://x.com/${username}/status/${tweetId}`);
   console.log("✅ Posted:", img.url);
 
-  // 重複防止の履歴を保存
-  saveUsed(usedCaptions);
+  // 履歴保存（次回以降の重複を防ぐ）
+  saveUsed(used);
 }
 
 main().catch((e) => {
