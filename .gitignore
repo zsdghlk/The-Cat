@@ -1,0 +1,7 @@
+node_modules/
+.env
+.DS_Store
+
+# state は基本無視、履歴ファイルだけコミット対象
+.state/*
+!.state/used_captions.json
