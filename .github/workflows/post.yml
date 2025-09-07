@@ -1,4 +1,4 @@
-name: Post Cat to X (Every 30 min)
+name: Post Cat to X (Every 15 min)
 
 on:
   schedule:
@@ -11,6 +11,9 @@ on:
         default: "true"
         type: choice
         options: ["true", "false"]
+
+permissions:
+  contents: write
 
 concurrency:
   group: post-cat
@@ -27,7 +30,7 @@ jobs:
           node-version: 20
       - run: npm ci || npm i
 
-      # Secretsが揃っているか先に検査（未設定ならここで失敗させる）
+      # Secretsが揃っているか先に検査
       - name: Preflight (check secrets)
         run: |
           node -e "['CAT_API_KEY','TWITTER_APP_KEY','TWITTER_APP_SECRET','TWITTER_ACCESS_TOKEN','TWITTER_ACCESS_SECRET'].forEach(k=>{if(!process.env[k]){throw new Error('Missing '+k)}})"
@@ -46,5 +49,14 @@ jobs:
           TWITTER_APP_SECRET: ${{ secrets.TWITTER_APP_SECRET }}
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
-          # dispatchのときは入力、それ以外（schedule）はfalse
+          # dispatchのときだけ inputs を使い、それ以外（schedule）は false
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+
+      - name: Commit caption state
+        if: ${{ success() }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .state/used_captions.json
+          git commit -m "chore: update caption history [skip ci]" || echo "no changes"
+          git push
